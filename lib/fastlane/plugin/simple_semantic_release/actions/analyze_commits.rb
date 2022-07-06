@@ -198,7 +198,7 @@ module Fastlane
         success_message = "Next version (#{next_version}) is higher than last version (#{version}). This version should be released."
         UI.success(success_message) if is_next_version_releasable
 
-        is_next_version_releasable
+        return next_version, is_next_version_releasable
       end
 
       def self.is_codepush_friendly(params)
