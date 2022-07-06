@@ -1,5 +1,5 @@
 require 'fastlane/action'
-require_relative '../helper/semantic_release_helper'
+require_relative '../helper/simple_semantic_release_helper'
 
 module Fastlane
   module Actions
@@ -33,7 +33,7 @@ module Fastlane
       end
 
       def self.get_commits_from_hash(params)
-        commits = Helper::SemanticReleaseHelper.git_log(
+        commits = Helper::SimpleSemanticReleaseHelper.git_log(
           pretty: '%s|%b|>',
           start: params[:hash],
           debug: params[:debug]
@@ -133,7 +133,7 @@ module Fastlane
           subject = parts[0].strip
           # conventional commits are in format
           # type: subject (fix: app crash - for example)
-          commit = Helper::SemanticReleaseHelper.parse_commit(
+          commit = Helper::SimpleSemanticReleaseHelper.parse_commit(
             commit_subject: subject,
             commit_body: parts[1],
             releases: releases,
@@ -169,7 +169,7 @@ module Fastlane
 
         next_version = "#{next_major}.#{next_minor}.#{next_patch}"
 
-        is_next_version_releasable = Helper::SemanticReleaseHelper.semver_gt(next_version, version)
+        is_next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(next_version, version)
 
         Actions.lane_context[SharedValues::RELEASE_ANALYZED] = true
         Actions.lane_context[SharedValues::RELEASE_IS_NEXT_VERSION_HIGHER] = is_next_version_releasable
@@ -218,7 +218,7 @@ module Fastlane
         splitted.each do |line|
           # conventional commits are in format
           # type: subject (fix: app crash - for example)
-          commit = Helper::SemanticReleaseHelper.parse_commit(
+          commit = Helper::SimpleSemanticReleaseHelper.parse_commit(
             commit_subject: line.split("|")[0],
             commit_body: line.split("|")[1],
             releases: releases,
@@ -284,11 +284,11 @@ module Fastlane
             verify_block: proc do |value|
               case value
               when String
-                unless Helper::SemanticReleaseHelper.format_patterns.key?(value)
+                unless Helper::SimpleSemanticReleaseHelper.format_patterns.key?(value)
                   UI.user_error!("Invalid format preset: #{value}")
                 end
 
-                pattern = Helper::SemanticReleaseHelper.format_patterns[value]
+                pattern = Helper::SimpleSemanticReleaseHelper.format_patterns[value]
               when Regexp
                 pattern = value
               else

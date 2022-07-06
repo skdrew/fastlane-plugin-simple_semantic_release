@@ -4,7 +4,7 @@ module Fastlane
   UI = FastlaneCore::UI unless Fastlane.const_defined?("UI")
 
   module Helper
-    class SemanticReleaseHelper
+    class SimpleSemanticReleaseHelper
       def self.format_patterns
         return {
           "default" => /^(docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/,
@@ -13,7 +13,7 @@ module Fastlane
       end
 
       # class methods that you define here become available in your action
-      # as `Helper::SemanticReleaseHelper.your_method`
+      # as `Helper::SimpleSemanticReleaseHelper.your_method`
       #
       def self.git_log(params)
         command = "git log --pretty='#{params[:pretty]}' --reverse #{params[:start]}..HEAD"

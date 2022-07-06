@@ -20,11 +20,11 @@ lane :publish do
 
   # Put down the next version - it will be taken in gemspec then
   # see .gemspec and version.rb
-  code = "module Fastlane module SemanticRelease VERSION = \"#{next_version}\" end end"
-  filepath = "../lib/fastlane/plugin/semantic_release/version.rb"
+  code = "module Fastlane module SimpleSemanticRelease VERSION = \"#{next_version}\" end end"
+  filepath = "../lib/fastlane/plugin/simple_semantic_release/version.rb"
   sh("echo '#{code}' > #{filepath}")
 
-  filename = "fastlane-plugin-semantic_release-#{next_version}.gem"
+  filename = "fastlane-plugin-simple_semantic_release-#{next_version}.gem"
   tag = "v#{next_version}"
 
   sh("rake build")
@@ -34,7 +34,7 @@ lane :publish do
   push_git_tags
 
   set_github_release(
-    repository_name: "xotahal/fastlane-plugin-semantic_release",
+    repository_name: "skdrew/fastlane-plugin-simple_semantic_release",
     api_token: ENV["GH_TOKEN"],
     name: next_version,
     tag_name: tag,
