@@ -39,7 +39,7 @@ describe Fastlane::Actions::AnalyzeCommitsAction do
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::RELEASE_NEXT_VERSION]).to eq("1.1.0")
     end
 
-    it "should increment major change and return true" do
+    it "should increment major change when finding BREAKING CHANGE in commit message and return true" do
       commits = [
         "docs: ...|",
         "feat: ...|",
@@ -51,11 +51,11 @@ describe Fastlane::Actions::AnalyzeCommitsAction do
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::RELEASE_NEXT_VERSION]).to eq("2.0.0")
     end
 
-    it "should increment major change and return true" do
+    it "should increment major change when finding ! in prefix and return true" do
       commits = [
         "docs: ...|",
         "feat: ...|",
-        "fix!: ...|BREAKING CHANGE: Bump major version"
+        "fix!: ...|Bump major version"
       ]
       test_analyze_commits(commits)
 
