@@ -52,12 +52,11 @@ module Fastlane
 
         # Begining of release notes
         if params[:display_title] == true
-          title = version
-          title += " #{params[:title]}" if params[:title]
-          title += " (#{Date.today})"
+          title = style_text(version, format, "title").to_s
+          title += " - #{params[:title]}" if params[:title]
+          title += " - (#{Date.today})"
 
-          result = style_text(title, format, "title").to_s
-          result += "\n\n"
+          result += "#{title}\n\n"
         end
 
         params[:order].each do |type|
@@ -65,7 +64,7 @@ module Fastlane
           next if commits.none? { |commit| commit[:type] == type }
 
           result += style_text(sections[type.to_sym], format, "heading").to_s
-          result += "\n"
+          result += "\n\n"
 
           commits.each do |commit|
             next if commit[:type] != type || commit[:is_merge]
@@ -95,7 +94,7 @@ module Fastlane
 
         if commits.any? { |commit| commit[:is_breaking_change] == true }
           result += style_text("BREAKING CHANGES", format, "heading").to_s
-          result += "\n"
+          result += "\n\n"
 
           commits.each do |commit|
             next unless commit[:is_breaking_change]
@@ -129,7 +128,7 @@ module Fastlane
         case style
         when "title"
           if format == "markdown"
-            "# #{text}"
+            "## [#{text}]"
           elsif format == "slack"
             "*#{text}*"
           else
