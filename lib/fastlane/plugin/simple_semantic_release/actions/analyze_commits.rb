@@ -152,7 +152,7 @@ module Fastlane
             next if scopes_to_ignore.include?(scope) #=> true
           end
 
-          if commit[:release] == "major" || commit[:is_breaking_change]
+          if commit[:release] == "major" || commit[:is_breaking_change] || commit[:has_exclamation_mark]
             major_changes += 1
           elsif commit[:release] == "minor"
             minor_changes += 1
@@ -238,7 +238,7 @@ module Fastlane
             codepush_friendly: codepush_friendly
           )
 
-          if commit[:release] == "major" || commit[:is_breaking_change]
+          if commit[:release] == "major" || commit[:is_breaking_change] || commit[:has_exclamation_mark]
             next_major += 1
             next_minor = 0
             next_patch = 0

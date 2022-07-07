@@ -63,6 +63,18 @@ describe Fastlane::Actions::AnalyzeCommitsAction do
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::RELEASE_NEXT_VERSION]).to eq("2.0.0")
     end
 
+    it "should increment major change when finding ! in prefix with no commit body and return true" do
+      commits = [
+        "docs: ...|",
+        "feat: ...|",
+        "fix!: ..."
+      ]
+      test_analyze_commits(commits)
+
+      expect(execute_lane_test(match: 'v*')).to eq(["2.0.0", true])
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::RELEASE_NEXT_VERSION]).to eq("2.0.0")
+    end
+
     describe "scopes" do
       commits = [
         "fix(scope): ...|",

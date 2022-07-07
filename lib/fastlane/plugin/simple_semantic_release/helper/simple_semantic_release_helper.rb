@@ -58,11 +58,6 @@ module Fastlane
             breaking_change_matched = commit_body.match(breaking_change_pattern)
             codepush_matched = commit_body.match(codepush_pattern)
 
-            if result[:has_exclamation_mark]
-              result[:is_breaking_change] = true
-              result[:breaking_change] = commit_body
-            end
-
             unless breaking_change_matched.nil?
               result[:is_breaking_change] = true
               result[:breaking_change] = breaking_change_matched[1]
