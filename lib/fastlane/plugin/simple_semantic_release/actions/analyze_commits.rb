@@ -163,9 +163,6 @@ module Fastlane
           unless commit[:is_codepush_friendly]
             is_next_version_compatible_with_codepush = false
           end
-
-          next_version = "#{next_major}.#{next_minor}.#{next_patch}"
-          UI.message("#{next_version}: #{subject}") if params[:show_version_path]
         end
 
         if major_changes > 0
@@ -332,13 +329,6 @@ module Fastlane
             description: "To ignore certain scopes when calculating releases",
             default_value: [],
             type: Array,
-            optional: true
-          ),
-          FastlaneCore::ConfigItem.new(
-            key: :show_version_path,
-            description: "True if you want to print out the version calculated for each commit",
-            default_value: true,
-            type: Boolean,
             optional: true
           ),
           FastlaneCore::ConfigItem.new(
