@@ -11,26 +11,24 @@ module Fastlane
     end
 
     class AnalyzeCommitsAction < Action
-      def self.get_latest_tags
+      def self.get_tags(limit)
         tags = []
 
-        command = "git tag --sort=-taggerdate --list '#{@params[:match]}' | head -1"
+        command = "git tag --sort=-taggerdate --list '#{@params[:match]}' | head -#{limit}"
         result = Actions.sh(command, log: @params[:debug])
 
         result.each_line { |line| tags << line.strip unless line == '\n'}
 
+        tags
+      end
+
+      def self.get_latest_tags
+        tags = get_tags(1)
         tags.push('HEAD')
       end
 
       def self.get_current_version_tags
-        tags = []
-
-        # try to find the last two tags that match
-        command = "git tag --sort=-taggerdate --list '#{@params[:match]}' | head -2"
-        result = Actions.sh(command, log: @params[:debug])
-
-        # push the results into an array
-        result.each_line { |line| tags << line.strip unless line == '\n'}
+        tags = get_tags(2)
 
         # only one tag matches, match that tag against HEAD
         if tags.length == 1
