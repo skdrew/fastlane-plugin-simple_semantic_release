@@ -31,6 +31,9 @@ module Fastlane
       end
 
       def self.get_version_commits(tags)
+        releases = { fix: "patch", feat: "minor" }
+        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
+
         # if no tags match, display all commits
         tag_comparison = "'#{tags[0]}'...'#{tags[1]}'" unless tags.length == 0
         UI.message "Comparing all commits between tags #{tags[0]} and #{tags[1]}" unless tags.length == 0
@@ -38,14 +41,7 @@ module Fastlane
         command = "git log --pretty='%s|%b|>' #{tag_comparison}"
         commits = Actions.sh(command, log: @params[:debug])
 
-        commits.strip.split('|>')
-      end
-
-      def self.parse_version_commits(commits)
-        releases = { fix: "patch", feat: "minor" }
-        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
-
-        commits.map do |commit_line|
+        commits.strip.split('|>').map do |commit_line|
           Helper::SimpleSemanticReleaseHelper.parse_commit(
             commit_line: commit_line.strip,
             releases: releases,
@@ -112,8 +108,7 @@ module Fastlane
         @params = params
 
         latest_tags = get_latest_version_tags
-        version_commits = get_version_commits(latest_tags)
-        parsed_commits = parse_version_commits(version_commits)
+        parsed_commits = get_version_commits(latest_tags)
 
         current_version_number = get_current_version_number(latest_tags)
         next_version_number = get_next_version_number(parsed_commits, current_version_number)
