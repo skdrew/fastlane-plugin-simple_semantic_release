@@ -42,7 +42,7 @@ module Fastlane
       end
 
       def self.parse_version_commits(commits)
-        releases = @params[:releases]
+        releases = { fix: "patch", feat: "minor" }
         format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
 
         commits.map do |commit_line|
@@ -155,12 +155,6 @@ module Fastlane
             end
           ),
           FastlaneCore::ConfigItem.new(
-            key: :releases,
-            description: "Map types of commit to release (major, minor, patch)",
-            default_value: { fix: "patch", feat: "minor" },
-            type: Hash
-          ),
-          FastlaneCore::ConfigItem.new(
             key: :tag_version_match,
             description: "To parse version number from tag name",
             default_value: '\d+\.\d+\.\d+'
@@ -200,7 +194,7 @@ module Fastlane
 
       def self.authors
         # So no one will ever forget your contribution to fastlane :) You are awesome btw!
-        ["xotahal"]
+        ["xotahal", "skdrew"]
       end
 
       def self.is_supported?(platform)

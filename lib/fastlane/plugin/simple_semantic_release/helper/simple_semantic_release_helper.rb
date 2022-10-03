@@ -22,7 +22,7 @@ module Fastlane
         commit_subject = parts[0].strip
         commit_body = parts[1]
 
-        releases = params[:releases]
+        releases = { fix: "patch", feat: "minor" }
         pattern = params[:pattern]
         breaking_change_pattern = /BREAKING CHANGES?: (.*)/
         breaking_change = false
