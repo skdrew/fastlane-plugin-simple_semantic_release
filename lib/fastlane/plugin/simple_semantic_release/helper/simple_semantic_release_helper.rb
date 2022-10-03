@@ -5,13 +5,6 @@ module Fastlane
 
   module Helper
     class SimpleSemanticReleaseHelper
-      def self.format_patterns
-        return {
-          "default" => /^(docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/,
-          "angular" => /^(\w*)(?:\((.*)\))?(): (.*)/
-        }
-      end
-
       # class methods that you define here become available in your action
       # as `Helper::SimpleSemanticReleaseHelper.your_method`
       #
@@ -21,15 +14,21 @@ module Fastlane
       end
 
       def self.parse_commit(params)
-        commit_subject = params[:commit_subject].strip
-        commit_body = params[:commit_body]
+        # conventional commits are in format
+        # type: subject (fix: app crash - for example)
+        commit_line = params[:commit_line]
+
+        parts = commit_line.split("|")
+        commit_subject = parts[0].strip
+        commit_body = parts[1]
+
         releases = params[:releases]
-        codepush_friendly = params[:codepush_friendly]
         pattern = params[:pattern]
         breaking_change_pattern = /BREAKING CHANGES?: (.*)/
-        codepush_pattern = /codepush?: (.*)/
+        breaking_change = false
 
         matched = commit_subject.match(pattern)
+
         result = {
           is_valid: false,
           subject: commit_subject,
@@ -38,34 +37,29 @@ module Fastlane
         }
 
         unless matched.nil?
-          type = matched[1]
-          scope = matched[2]
+          type =              matched[1]
+          scope =             matched[2]
+          exclamation_mark =  matched[3] == '!'
+          subject =           matched[4]
+
+          # UI.message "Type: #{type}"
+          # UI.message "Scope: #{scope}"
+          # UI.message "Exclamation mark: #{exclamation_mark}"
+          # UI.message "Subject: #{subject}"
 
           result[:is_valid] = true
           result[:type] = type
           result[:scope] = scope
-          result[:has_exclamation_mark] = matched[3] == '!'
-          result[:subject] = matched[4]
-
-          unless releases.nil?
-            result[:release] = releases[type.to_sym]
-          end
-          unless codepush_friendly.nil?
-            result[:is_codepush_friendly] = codepush_friendly.include?(type)
-          end
+          result[:subject] = subject
 
           unless commit_body.nil?
             breaking_change_matched = commit_body.match(breaking_change_pattern)
-            codepush_matched = commit_body.match(codepush_pattern)
+            breaking_change = true unless breaking_change_matched.nil?
+          end
 
-            unless breaking_change_matched.nil?
-              result[:is_breaking_change] = true
-              result[:breaking_change] = breaking_change_matched[1]
-            end
-
-            unless codepush_matched.nil?
-              result[:is_codepush_friendly] = codepush_matched[1] == 'ok'
-            end
+          unless releases.nil?
+            result[:release] = releases[type.to_sym]
+            result[:release] = 'major' if breaking_change or exclamation_mark
           end
         end
 

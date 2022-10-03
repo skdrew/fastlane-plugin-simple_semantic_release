@@ -17,6 +17,7 @@ module Fastlane
       end
 
       def self.run(params)
+        UI.message "THIS IS MY NEW VERSION"
         # Get next version number from shared values
         analyzed = lane_context[SharedValues::RELEASE_ANALYZED]
 
@@ -174,7 +175,7 @@ module Fastlane
       def self.parse_commits(commits, params)
         parsed = []
         # %s|%b|%H|%h|%an|%at
-        format_pattern = lane_context[SharedValues::CONVENTIONAL_CHANGELOG_ACTION_FORMAT_PATTERN]
+        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
         commits.each do |line|
           splitted = line.split("|")
 
