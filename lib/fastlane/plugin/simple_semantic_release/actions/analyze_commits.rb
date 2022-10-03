@@ -11,14 +11,18 @@ module Fastlane
     end
 
     class AnalyzeCommitsAction < Action
-      def self.get_latest_tag
+      def self.get_latest_tags
+        tags = []
+
         command = "git tag --sort=-taggerdate --list '#{@params[:match]}' | head -1"
         result = Actions.sh(command, log: @params[:debug])
 
-        result.strip
+        result.each_line { |line| tags << line.strip unless line == '\n'}
+
+        tags.push('HEAD')
       end
 
-      def self.get_latest_version_tags
+      def self.get_current_version_tags
         tags = []
 
         # try to find the last two tags that match
@@ -114,10 +118,10 @@ module Fastlane
       def self.run(params)
         @params = params
 
-        latest_tags = get_latest_version_tags
-        parsed_commits = get_version_commits(latest_tags)
+        version_tags = get_current_version_tags
+        parsed_commits = get_version_commits(version_tags)
 
-        current_version_number = get_current_version_number(latest_tags)
+        current_version_number = get_current_version_number(version_tags)
         next_version_number = get_next_version_number(parsed_commits, current_version_number)
 
         next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(next_version_number, current_version_number)
