@@ -112,11 +112,12 @@ module Fastlane
         @params = params
 
         latest_tags = get_latest_version_tags
-        current_version_number = get_current_version_number(latest_tags)
         version_commits = get_version_commits(latest_tags)
         parsed_commits = parse_version_commits(version_commits)
 
+        current_version_number = get_current_version_number(latest_tags)
         next_version_number = get_next_version_number(parsed_commits, current_version_number)
+
         next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(next_version_number, current_version_number)
 
         success_message = "Next version (#{next_version_number}) is higher than last version (#{current_version_number}). This version should be released."
