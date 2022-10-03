@@ -11,6 +11,13 @@ module Fastlane
     end
 
     class AnalyzeCommitsAction < Action
+      def self.get_latest_tag
+        command = "git tag --sort=-taggerdate --list '#{@params[:match]}' | head -1"
+        result = Actions.sh(command, log: @params[:debug])
+
+        result.strip
+      end
+
       def self.get_latest_version_tags
         tags = []
 
