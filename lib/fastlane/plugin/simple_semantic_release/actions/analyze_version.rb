@@ -5,10 +5,7 @@ module Fastlane
   module Actions
     class AnalyzeVersionAction < Action
       def self.run(params)
-        version = 'get_latest_tag'
-        version = 'get_current_version_tags' if params[:version] == 'released'
-
-        tags = Helper::SimpleSemanticReleaseHelper.send(version,
+        tags = Helper::SimpleSemanticReleaseHelper.get_latest_tag(
           match: params[:match],
           debug: params[:debug]
         )
@@ -72,15 +69,6 @@ module Fastlane
             description: "Match parameter of git describe. See man page of git describe for more info",
             verify_block: proc do |value|
               UI.user_error!("No match for analyze_commits action given, pass using `match: 'expr'`") unless value && !value.empty?
-            end
-          ),
-          FastlaneCore::ConfigItem.new(
-            key: :version,
-            description: "Select commits that have been released or not",
-            default_value: 'unreleased',
-            optional: true,
-            verify_block: proc do |value|
-              UI.user_error!("Version can only be 'unreleased' or 'released', you provided '#{value}'") unless ['released', 'unreleased'].include?(value)
             end
           ),
           FastlaneCore::ConfigItem.new(
