@@ -3,24 +3,27 @@ require_relative '../helper/simple_semantic_release_helper'
 
 module Fastlane
   module Actions
-    module SharedValues
-      RELEASE_IS_NEXT_VERSION_HIGHER = :RELEASE_IS_NEXT_VERSION_HIGHER
-      RELEASE_LAST_VERSION = :RELEASE_LAST_VERSION
-      RELEASE_NEXT_VERSION = :RELEASE_NEXT_VERSION
-    end
-
-    class AnalyzeCommitsAction < Action
+    class AnalyzeVersionAction < Action
       def self.run(params)
-        result = Helper::SimpleSemanticReleaseHelper.scan_current_release(params)
+        version = 'get_latest_tag'
+        version = 'get_current_version_tags' if params[:version] == 'released'
+
+        tags = Helper::SimpleSemanticReleaseHelper.send(version,
+          match: params[:match],
+          debug: params[:debug]
+        )
+
+        result = Helper::SimpleSemanticReleaseHelper.scan_current_release(
+          tags: tags,
+          tag_version_match: params[:tag_version_match],
+          ignore_scopes: params[:ignore_scopes],
+          debug: params[:debug]
+        )
 
         next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(result[:next_version], result[:current_version])
 
         success_message = "Next version (#{result[:next_version]}) is higher than last version (#{result[:current_version]}). This version should be released."
         UI.success(success_message) if next_version_releasable
-
-        Actions.lane_context[SharedValues::RELEASE_IS_NEXT_VERSION_HIGHER] = next_version_releasable
-        Actions.lane_context[SharedValues::RELEASE_LAST_VERSION] = result[:current_version]
-        Actions.lane_context[SharedValues::RELEASE_NEXT_VERSION] = result[:next_version]
 
         [result[:next_version], next_version_releasable]
       end
@@ -38,15 +41,21 @@ module Fastlane
       end
 
       def self.available_options
-        # Define all options your action supports.
-
-        # Below a few examples
         [
           FastlaneCore::ConfigItem.new(
             key: :match,
             description: "Match parameter of git describe. See man page of git describe for more info",
             verify_block: proc do |value|
               UI.user_error!("No match for analyze_commits action given, pass using `match: 'expr'`") unless value && !value.empty?
+            end
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :version,
+            description: "Select commits that have been released or not",
+            default_value: 'unreleased',
+            optional: true,
+            verify_block: proc do |value|
+              UI.user_error!("Version can only be 'unreleased' or 'released', you provided '#{value}'") unless ['released', 'unreleased'].include?(value)
             end
           ),
           FastlaneCore::ConfigItem.new(
@@ -72,8 +81,6 @@ module Fastlane
       end
 
       def self.output
-        # Define the shared values you are going to provide
-        # Example
         [
           ['RELEASE_IS_NEXT_VERSION_HIGHER', 'True if next version is higher then last version'],
           ['RELEASE_NEXT_VERSION', 'Next version string in format (major.minor.patch)'],
