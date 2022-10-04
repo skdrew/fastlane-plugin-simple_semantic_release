@@ -66,15 +66,31 @@ module Fastlane
         "#{next_major}.#{next_minor}.#{next_patch}"
       end
 
+      def self.parse_version_commits(commits)
+        releases = { fix: "patch", feat: "minor" }
+        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
+
+        commits.map do |commit_line|
+          Helper::SimpleSemanticReleaseHelper.parse_commit(
+            commit_line: commit_line.strip,
+            releases: releases,
+            pattern: format_pattern
+          )
+        end
+      end
+
       def self.run(params)
         version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags({
           match: params[:match],
           debug: params[:debug]
         })
-        parsed_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits({
+        version_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits({
+          format: '%s|%b|>',
           tags: version_tags,
           debug: params[:debug]
         })
+
+        parsed_commits = parse_version_commits(version_commits)
 
         current_version_number = get_current_version_number({
           tags: version_tags,

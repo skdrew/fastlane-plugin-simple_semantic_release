@@ -9,24 +9,14 @@ module Fastlane
       # as `Helper::SimpleSemanticReleaseHelper.your_method`
 
       def self.get_version_commits(params)
-        releases = { fix: "patch", feat: "minor" }
-        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
-        tags = params[:tags]
-
         # if no tags match, display all commits
-        tag_comparison = "'#{tags[0]}'...'#{tags[1]}'" unless tags.length == 0
-        UI.message "Comparing all commits between tags #{tags[0]} and #{tags[1]}" unless tags.length == 0
+        tag_comparison = "'#{params[:tags][0]}'...'#{params[:tags][1]}'" unless params[:tags].length == 0
+        UI.message "Comparing all commits between tags #{params[:tags][0]} and #{params[:tags][1]}" unless params[:tags].length == 0
 
-        command = "git log --pretty='%s|%b|>' #{tag_comparison}"
+        command = "git log --pretty='#{params[:format]}' #{tag_comparison}"
         commits = Actions.sh(command, log: params[:debug])
 
-        commits.strip.split('|>').map do |commit_line|
-          parse_commit(
-            commit_line: commit_line.strip,
-            releases: releases,
-            pattern: format_pattern
-          )
-        end
+        commits.strip.split('|>')
       end
 
       def self.get_tags(params)
