@@ -31,8 +31,7 @@ module Fastlane
         }
       end
 
-
-      def self.get_version_commits(params)
+      def self.get_commits(params)
         # if no tags match, display all commits
         tag_comparison = "'#{params[:tags][0]}'...'#{params[:tags][1]}'" unless params[:tags].length == 0
         UI.message "Comparing all commits between tags #{params[:tags][0]} and #{params[:tags][1]}" unless params[:tags].length == 0
@@ -40,7 +39,13 @@ module Fastlane
         command = "git log --pretty='%s|%b|%H|%h|%at|>' #{tag_comparison}"
         commits = Actions.sh(command, log: params[:debug])
 
-        commits.strip.split('|>').map do |commit_line|
+        commits.strip.split('|>')
+      end
+
+      def self.get_version_commits(params)
+        commits = get_commits(params)
+
+        commits.map do |commit_line|
           parse_commit(commit_line)
         end
       end
