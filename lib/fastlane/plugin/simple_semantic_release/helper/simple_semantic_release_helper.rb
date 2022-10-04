@@ -87,15 +87,26 @@ module Fastlane
         end
 
         if major_changes > 0
+          UI.message "Found at least one major change, bumping major version"
+
           next_major += 1
           next_minor = 0
           next_patch = 0
         elsif minor_changes > 0
+          UI.message "Found at least one minor change, bumping minor version"
+
           next_minor += 1
           next_patch = 0
         elsif patch_changes > 0
+          UI.message "Found at least one patch change, bumping patch version"
+
           next_patch += 1
         end
+
+        UI.message "Found:"
+        UI.message "- major changes: #{major_changes}"
+        UI.message "- minor changes: #{minor_changes}"
+        UI.message "- patch changes: #{patch_changes}"
 
         "#{next_major}.#{next_minor}.#{next_patch}"
       end
@@ -190,151 +201,6 @@ module Fastlane
         end
 
         result
-      end
-
-      def self.note_builder(params)
-        sections = params[:sections]
-
-        result = ""
-
-        # Begining of release notes
-        if params[:display_title] == true
-          title = style_text(params[:version], params[:format], "title").to_s
-          title += " - #{params[:title]}" if params[:title]
-          title += " - (#{Date.today})"
-
-          result += "#{title}\n\n"
-        end
-
-        params[:order].each do |type|
-          # write section only if there is at least one commit
-          next if params[:commits].none? { |commit| commit[:type] == type }
-
-          result += style_text(sections[type.to_sym], params[:format], "heading").to_s
-          result += "\n\n"
-
-          params[:commits].each do |commit|
-            next if commit[:type] != type || commit[:is_merge]
-
-            result += "-"
-
-            unless commit[:scope].nil?
-              formatted_text = style_text("#{commit[:scope]}", params[:format], "bold").to_s
-              result += " #{formatted_text}"
-            end
-
-            result += " #{commit[:subject]}"
-
-            if params[:display_links] == true
-              styled_link = build_commit_link(commit, params[:commit_url], params[:format]).to_s
-              result += " (#{styled_link})"
-            end
-
-            result += "\n"
-          end
-          result += "\n"
-        end
-
-        if params[:commits].any? { |commit| commit[:breaking_change] == true }
-          result += style_text("BREAKING CHANGES", params[:format], "heading").to_s
-          result += "\n\n"
-
-          params[:commits].each do |commit|
-            next unless commit[:breaking_change]
-            result += "- #{commit[:breaking_change]}" # This is the only unique part of this loop
-
-            if params[:display_links] == true
-              styled_link = build_commit_link(commit, params[:commit_url], params[:format]).to_s
-              result += " (#{styled_link})"
-            end
-
-            result += "\n"
-          end
-
-          result += "\n"
-        end
-
-        # Trim any trailing newlines
-        result.rstrip!
-      end
-
-      def self.style_text(text, format, style)
-        # formats the text according to the style we're looking to use
-
-        # Skips all styling
-        case style
-        when "title"
-          if format == "markdown"
-            "## [#{text}]"
-          elsif format == "slack"
-            "*#{text}*"
-          else
-            text
-          end
-        when "heading"
-          if format == "markdown"
-            "### #{text}"
-          elsif format == "slack"
-            "*#{text}*"
-          else
-            "#{text}:"
-          end
-        when "bold"
-          if format == "markdown"
-            "**#{text}**"
-          elsif format == "slack"
-            "*#{text}*"
-          else
-            text
-          end
-        else
-          text # catchall, shouldn't be needed
-        end
-      end
-
-      def self.build_commit_link(commit, commit_url, format)
-        # formats the link according to the output format we need
-        short_hash = commit[:short_hash]
-        hash = commit[:hash]
-        url = "#{commit_url}/#{hash}"
-
-        case format
-        when "slack"
-          "<#{url}|#{short_hash}>"
-        when "markdown"
-          "[#{short_hash}](#{url})"
-        else
-          url
-        end
-      end
-
-      def self.semver_gt(first, second)
-        first_major = (first.split('.')[0] || 0).to_i
-        first_minor = (first.split('.')[1] || 0).to_i
-        first_patch = (first.split('.')[2] || 0).to_i
-
-        second_major = (second.split('.')[0] || 0).to_i
-        second_minor = (second.split('.')[1] || 0).to_i
-        second_patch = (second.split('.')[2] || 0).to_i
-
-        # Check if next version is higher then last version
-        if first_major > second_major
-          return true
-        elsif first_major == second_major
-          if first_minor > second_minor
-            return true
-          elsif first_minor == second_minor
-            if first_patch > second_patch
-              return true
-            end
-          end
-        end
-
-        return false
-      end
-
-      def self.semver_lt(first, second)
-        return !semver_gt(first, second)
       end
     end
   end
