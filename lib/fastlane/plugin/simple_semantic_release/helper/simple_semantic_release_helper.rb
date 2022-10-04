@@ -8,6 +8,34 @@ module Fastlane
       # class methods that you define here become available in your action
       # as `Helper::SimpleSemanticReleaseHelper.your_method`
 
+      def self.scan_current_release(params)
+        version_tags = get_current_version_tags(
+          match: params[:match],
+          debug: params[:debug]
+        )
+        version_commits = get_version_commits(
+          tags: version_tags,
+          debug: params[:debug]
+        )
+
+        current_version = get_current_version_number(
+          tags: version_tags,
+          tag_version_match: params[:tag_version_match]
+        )
+        next_version = get_next_version_number(
+          ignore_scopes: params[:ignore_scopes],
+          commits: version_commits,
+          version_number: current_version
+        )
+
+        {
+          commits: version_commits,
+          current_version: current_version,
+          next_version: next_version
+        }
+      end
+
+
       def self.get_version_commits(params)
         # if no tags match, display all commits
         tag_comparison = "'#{params[:tags][0]}'...'#{params[:tags][1]}'" unless params[:tags].length == 0
@@ -17,7 +45,7 @@ module Fastlane
         commits = Actions.sh(command, log: params[:debug])
 
         commits.strip.split('|>').map do |commit_line|
-          Helper::SimpleSemanticReleaseHelper.parse_commit(commit_line)
+          parse_commit(commit_line)
         end
       end
 

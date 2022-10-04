@@ -11,35 +11,18 @@ module Fastlane
 
     class AnalyzeCommitsAction < Action
       def self.run(params)
-        version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags(
-          match: params[:match],
-          debug: params[:debug]
-        )
-        version_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits(
-          tags: version_tags,
-          debug: params[:debug]
-        )
+        result = Helper::SimpleSemanticReleaseHelper.scan_current_release(params)
 
-        current_version_number = Helper::SimpleSemanticReleaseHelper.get_current_version_number(
-          tags: version_tags,
-          tag_version_match: params[:tag_version_match]
-        )
-        next_version_number = Helper::SimpleSemanticReleaseHelper.get_next_version_number(
-          ignore_scopes: params[:ignore_scopes],
-          commits: version_commits,
-          version_number: current_version_number
-        )
+        next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(result[:next_version], result[:current_version])
 
-        next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(next_version_number, current_version_number)
-
-        success_message = "Next version (#{next_version_number}) is higher than last version (#{current_version_number}). This version should be released."
+        success_message = "Next version (#{result[:next_version]}) is higher than last version (#{result[:current_version]}). This version should be released."
         UI.success(success_message) if next_version_releasable
 
         Actions.lane_context[SharedValues::RELEASE_IS_NEXT_VERSION_HIGHER] = next_version_releasable
-        Actions.lane_context[SharedValues::RELEASE_LAST_VERSION] = current_version_number
-        Actions.lane_context[SharedValues::RELEASE_NEXT_VERSION] = next_version_number
+        Actions.lane_context[SharedValues::RELEASE_LAST_VERSION] = result[:current_version]
+        Actions.lane_context[SharedValues::RELEASE_NEXT_VERSION] = result[:next_version]
 
-        [next_version_number, next_version_releasable]
+        [result[:next_version], next_version_releasable]
       end
 
       #####################################################

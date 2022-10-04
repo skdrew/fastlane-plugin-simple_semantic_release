@@ -5,35 +5,18 @@ module Fastlane
   module Actions
     class ConventionalChangelogAction < Action
       def self.run(params)
-        version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags(
-          match: params[:match],
-          debug: params[:debug]
-        )
-        version_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits(
-          tags: version_tags,
-          debug: params[:debug]
-        )
-
-        current_version_number = Helper::SimpleSemanticReleaseHelper.get_current_version_number(
-          tags: version_tags,
-          tag_version_match: params[:tag_version_match]
-        )
-        next_version_number = Helper::SimpleSemanticReleaseHelper.get_next_version_number(
-          ignore_scopes: params[:ignore_scopes],
-          commits: version_commits,
-          version_number: current_version_number
-        )
+        result = Helper::SimpleSemanticReleaseHelper.scan_current_release(params)
 
         note_builder(
-          format: params[:format],
-          commits: version_commits,
-          version: next_version_number,
+          commits: result[:commits],
+          version: result[:next_version],
           commit_url: params[:commit_url],
-          sections: params[:sections],
+          display_links: params[:display_links],
           display_title: params[:display_title],
-          title: params[:title],
+          format: params[:format],
           order: params[:order],
-          display_links: params[:display_links]
+          sections: params[:sections],
+          title: params[:title]
         )
       end
 
