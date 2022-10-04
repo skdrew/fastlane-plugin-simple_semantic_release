@@ -11,26 +11,6 @@ module Fastlane
     end
 
     class AnalyzeCommitsAction < Action
-      def self.get_version_commits(tags)
-        releases = { fix: "patch", feat: "minor" }
-        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
-
-        # if no tags match, display all commits
-        tag_comparison = "'#{tags[0]}'...'#{tags[1]}'" unless tags.length == 0
-        UI.message "Comparing all commits between tags #{tags[0]} and #{tags[1]}" unless tags.length == 0
-
-        command = "git log --pretty='%s|%b|>' #{tag_comparison}"
-        commits = Actions.sh(command, log: @params[:debug])
-
-        commits.strip.split('|>').map do |commit_line|
-          Helper::SimpleSemanticReleaseHelper.parse_commit(
-            commit_line: commit_line.strip,
-            releases: releases,
-            pattern: format_pattern
-          )
-        end
-      end
-
       def self.get_current_version_number(tags)
         version_number = '0.0.0'
 
@@ -92,7 +72,10 @@ module Fastlane
           match: params[:match],
           debug: params[:debug]
         })
-        parsed_commits = get_version_commits(version_tags)
+        parsed_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits({
+          tags: version_tags,
+          debug: params[:debug]
+        })
 
         current_version_number = get_current_version_number(version_tags)
         next_version_number = get_next_version_number(parsed_commits, current_version_number)
@@ -100,6 +83,7 @@ module Fastlane
         next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(next_version_number, current_version_number)
 
         success_message = "Next version (#{next_version_number}) is higher than last version (#{current_version_number}). This version should be released."
+
         UI.success(success_message) if next_version_releasable
 
         Actions.lane_context[SharedValues::RELEASE_ANALYZED] = true

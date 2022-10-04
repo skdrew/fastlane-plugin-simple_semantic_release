@@ -8,6 +8,27 @@ module Fastlane
       # class methods that you define here become available in your action
       # as `Helper::SimpleSemanticReleaseHelper.your_method`
 
+      def self.get_version_commits(params)
+        releases = { fix: "patch", feat: "minor" }
+        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
+        tags = params[:tags]
+
+        # if no tags match, display all commits
+        tag_comparison = "'#{tags[0]}'...'#{tags[1]}'" unless tags.length == 0
+        UI.message "Comparing all commits between tags #{tags[0]} and #{tags[1]}" unless tags.length == 0
+
+        command = "git log --pretty='%s|%b|>' #{tag_comparison}"
+        commits = Actions.sh(command, log: params[:debug])
+
+        commits.strip.split('|>').map do |commit_line|
+          parse_commit(
+            commit_line: commit_line.strip,
+            releases: releases,
+            pattern: format_pattern
+          )
+        end
+      end
+
       def self.get_tags(params)
         tags = []
 
