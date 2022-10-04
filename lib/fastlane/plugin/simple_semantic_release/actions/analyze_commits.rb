@@ -11,12 +11,13 @@ module Fastlane
     end
 
     class AnalyzeCommitsAction < Action
-      def self.get_current_version_number(tags)
+      def self.get_current_version_number(params)
+        tags = params[:tags]
         version_number = '0.0.0'
 
         if tags.length > 0
           # first tag in tags array is the latest one
-          parsed_version = tags[0].match(@params[:tag_version_match])
+          parsed_version = tags[0].match(params[:tag_version_match])
 
           if parsed_version.nil?
             UI.user_error!("Error while parsing version from tag #{tags[0]} by using tag_version_match - #{params[:tag_version_match]}. Please check if the tag contains version as you expect and if you are using single brackets for tag_version_match parameter.")
@@ -28,18 +29,18 @@ module Fastlane
         version_number
       end
 
-      def self.get_next_version_number(commits, current_version_number)
-        next_major = (current_version_number.split('.')[0] || 0).to_i
-        next_minor = (current_version_number.split('.')[1] || 0).to_i
-        next_patch = (current_version_number.split('.')[2] || 0).to_i
+      def self.get_next_version_number(params)
+        next_major = (params[:version_number].split('.')[0] || 0).to_i
+        next_minor = (params[:version_number].split('.')[1] || 0).to_i
+        next_patch = (params[:version_number].split('.')[2] || 0).to_i
 
         major_changes = 0
         minor_changes = 0
         patch_changes = 0
 
-        commits.each do |commit|
+        params[:commits].each do |commit|
           unless commit[:scope].nil?
-            next if @params[:ignore_scopes].include?(commit[:scope])
+            next if params[:ignore_scopes].include?(commit[:scope])
           end
 
           if commit[:release] == "major"
@@ -66,8 +67,6 @@ module Fastlane
       end
 
       def self.run(params)
-        @params = params
-
         version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags({
           match: params[:match],
           debug: params[:debug]
@@ -77,8 +76,15 @@ module Fastlane
           debug: params[:debug]
         })
 
-        current_version_number = get_current_version_number(version_tags)
-        next_version_number = get_next_version_number(parsed_commits, current_version_number)
+        current_version_number = get_current_version_number({
+          tags: version_tags,
+          tag_version_match: params[:tag_version_match]
+        })
+        next_version_number = get_next_version_number({
+          ignore_scopes: params[:ignore_scopes],
+          commits: parsed_commits,
+          version_number: current_version_number
+        })
 
         next_version_releasable = Helper::SimpleSemanticReleaseHelper.semver_gt(next_version_number, current_version_number)
 
