@@ -145,22 +145,23 @@ module Fastlane
           exclamation_mark =  matched[3] == '!'
           subject =           matched[4]
 
-          result[:is_valid]     = true
-          result[:type]         = type
-          result[:scope]        = scope
-          result[:subject]      = subject
-          result[:hash]         = hash
-          result[:short_hash]   = short_hash
-          result[:commit_date]  = commit_date
+          result[:is_valid]         = true
+          result[:breaking_change]  = false
+          result[:type]             = type
+          result[:scope]            = scope
+          result[:subject]          = subject
+          result[:hash]             = hash
+          result[:short_hash]       = short_hash
+          result[:commit_date]      = commit_date
 
           unless commit_body.nil?
             breaking_change_matched = commit_body.match(breaking_change_pattern)
-            breaking_change = true unless breaking_change_matched.nil?
+            result[:breaking_change] = true unless breaking_change_matched.nil?
           end
 
           unless releases.nil?
             result[:release] = releases[type.to_sym]
-            result[:release] = 'major' if breaking_change or exclamation_mark
+            result[:release] = 'major' if result[:breaking_change] or exclamation_mark
           end
         end
 

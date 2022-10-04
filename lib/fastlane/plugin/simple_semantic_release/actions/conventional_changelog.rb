@@ -5,36 +5,46 @@ module Fastlane
   module Actions
     class ConventionalChangelogAction < Action
       def self.run(params)
-        version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags({
+        version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags(
           match: params[:match],
           debug: params[:debug]
-        })
-        version_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits({
+        )
+        version_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits(
           tags: version_tags,
           debug: params[:debug]
-        })
+        )
 
-        current_version_number = Helper::SimpleSemanticReleaseHelper.get_current_version_number({
+        current_version_number = Helper::SimpleSemanticReleaseHelper.get_current_version_number(
           tags: version_tags,
           tag_version_match: params[:tag_version_match]
-        })
-        next_version_number = Helper::SimpleSemanticReleaseHelper.get_next_version_number({
+        )
+        next_version_number = Helper::SimpleSemanticReleaseHelper.get_next_version_number(
           ignore_scopes: params[:ignore_scopes],
           commits: version_commits,
           version_number: current_version_number
-        })
+        )
 
-        note_builder(params[:format], version_commits, next_version_number, params[:commit_url], params)
+        note_builder(
+          format: params[:format],
+          commits: version_commits,
+          version: next_version_number,
+          commit_url: params[:commit_url],
+          sections: params[:sections],
+          display_title: params[:display_title],
+          title: params[:title],
+          order: params[:order],
+          display_links: params[:display_links]
+        )
       end
 
-      def self.note_builder(format, commits, version, commit_url, params)
+      def self.note_builder(params)
         sections = params[:sections]
 
         result = ""
 
         # Begining of release notes
         if params[:display_title] == true
-          title = style_text(version, format, "title").to_s
+          title = style_text(params[:version], params[:format], "title").to_s
           title += " - #{params[:title]}" if params[:title]
           title += " - (#{Date.today})"
 
@@ -43,30 +53,26 @@ module Fastlane
 
         params[:order].each do |type|
           # write section only if there is at least one commit
-          next if commits.none? { |commit| commit[:type] == type }
+          next if params[:commits].none? { |commit| commit[:type] == type }
 
-          result += style_text(sections[type.to_sym], format, "heading").to_s
+          result += style_text(sections[type.to_sym], params[:format], "heading").to_s
           result += "\n\n"
 
-          commits.each do |commit|
+          params[:commits].each do |commit|
             next if commit[:type] != type || commit[:is_merge]
 
             result += "-"
 
             unless commit[:scope].nil?
-              formatted_text = style_text("#{commit[:scope]}", format, "bold").to_s
+              formatted_text = style_text("#{commit[:scope]}", params[:format], "bold").to_s
               result += " #{formatted_text}"
             end
 
             result += " #{commit[:subject]}"
 
             if params[:display_links] == true
-              styled_link = build_commit_link(commit, commit_url, format).to_s
+              styled_link = build_commit_link(commit, params[:commit_url], params[:format]).to_s
               result += " (#{styled_link})"
-            end
-
-            if params[:display_author]
-              result += " - #{commit[:author_name]}"
             end
 
             result += "\n"
@@ -74,16 +80,16 @@ module Fastlane
           result += "\n"
         end
 
-        if commits.any? { |commit| commit[:is_breaking_change] == true }
-          result += style_text("BREAKING CHANGES", format, "heading").to_s
+        if params[:commits].any? { |commit| commit[:breaking_change] == true }
+          result += style_text("BREAKING CHANGES", params[:format], "heading").to_s
           result += "\n\n"
 
-          commits.each do |commit|
-            next unless commit[:is_breaking_change]
+          params[:commits].each do |commit|
+            next unless commit[:breaking_change]
             result += "- #{commit[:breaking_change]}" # This is the only unique part of this loop
 
             if params[:display_links] == true
-              styled_link = build_commit_link(commit, commit_url, format).to_s
+              styled_link = build_commit_link(commit, params[:commit_url], params[:format]).to_s
               result += " (#{styled_link})"
             end
 
@@ -94,9 +100,7 @@ module Fastlane
         end
 
         # Trim any trailing newlines
-        result = result.rstrip!
-
-        result
+        result.rstrip!
       end
 
       def self.style_text(text, format, style)
