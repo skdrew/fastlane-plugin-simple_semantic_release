@@ -3,47 +3,28 @@ require_relative '../helper/simple_semantic_release_helper'
 
 module Fastlane
   module Actions
-    module SharedValues
-    end
-
     class ConventionalChangelogAction < Action
-      def self.get_commits_from_hash(params)
-        commits = Helper::SimpleSemanticReleaseHelper.git_log(
-          pretty: '%s|%b|%H|%h|%an|%at|>',
-          start: params[:hash],
-          debug: params[:debug]
-        )
-        commits.split("|>")
-      end
-
       def self.run(params)
-        UI.message "THIS IS MY NEW VERSION"
-        # Get next version number from shared values
-        analyzed = lane_context[SharedValues::RELEASE_ANALYZED]
-
-        # If analyze commits action was not run there will be no version in shared
-        # values. We need to run the action to get next version number
-        unless analyzed
-          UI.user_error!("Release hasn't been analyzed yet. Run analyze_commits action first please.")
-          # version = other_action.analyze_commits(match: params[:match])
-        end
-
-        last_tag_hash = lane_context[SharedValues::RELEASE_LAST_TAG_HASH]
-        version = lane_context[SharedValues::RELEASE_NEXT_VERSION]
-
-        # Get commits log between last version and head
-        commits = get_commits_from_hash(
-          hash: last_tag_hash,
+        version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags({
+          match: params[:match],
           debug: params[:debug]
-        )
-        parsed = parse_commits(commits, params)
+        })
+        version_commits = Helper::SimpleSemanticReleaseHelper.get_version_commits({
+          tags: version_tags,
+          debug: params[:debug]
+        })
 
-        commit_url = params[:commit_url]
-        format = params[:format]
+        current_version_number = Helper::SimpleSemanticReleaseHelper.get_current_version_number({
+          tags: version_tags,
+          tag_version_match: params[:tag_version_match]
+        })
+        next_version_number = Helper::SimpleSemanticReleaseHelper.get_next_version_number({
+          ignore_scopes: params[:ignore_scopes],
+          commits: version_commits,
+          version_number: current_version_number
+        })
 
-        result = note_builder(format, parsed, version, commit_url, params)
-
-        result
+        note_builder(params[:format], version_commits, next_version_number, params[:commit_url], params)
       end
 
       def self.note_builder(format, commits, version, commit_url, params)
@@ -73,7 +54,7 @@ module Fastlane
             result += "-"
 
             unless commit[:scope].nil?
-              formatted_text = style_text("#{commit[:scope]}:", format, "bold").to_s
+              formatted_text = style_text("#{commit[:scope]}", format, "bold").to_s
               result += " #{formatted_text}"
             end
 
@@ -104,10 +85,6 @@ module Fastlane
             if params[:display_links] == true
               styled_link = build_commit_link(commit, commit_url, format).to_s
               result += " (#{styled_link})"
-            end
-
-            if params[:display_author]
-              result += " - #{commit[:author_name]}"
             end
 
             result += "\n"
@@ -172,38 +149,6 @@ module Fastlane
         end
       end
 
-      def self.parse_commits(commits, params)
-        parsed = []
-        # %s|%b|%H|%h|%an|%at
-        format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
-        commits.each do |line|
-          splitted = line.split("|")
-
-          commit = Helper::SimpleSemanticReleaseHelper.parse_commit(
-            commit_subject: splitted[0],
-            commit_body: splitted[1],
-            pattern: format_pattern
-          )
-
-          unless commit[:scope].nil?
-            # if this commit has a scope, then we need to inspect to see if that is one of the scopes we're trying to exclude
-            scope = commit[:scope]
-            scopes_to_ignore = params[:ignore_scopes]
-            # if it is, we'll skip this commit when bumping versions
-            next if scopes_to_ignore.include?(scope) #=> true
-          end
-
-          commit[:hash] = splitted[2]
-          commit[:short_hash] = splitted[3]
-          commit[:author_name] = splitted[4]
-          commit[:commit_date] = splitted[5]
-
-          parsed.push(commit)
-        end
-
-        parsed
-      end
-
       #####################################################
       # @!group Documentation
       #####################################################
@@ -221,6 +166,18 @@ module Fastlane
 
         # Below a few examples
         [
+          FastlaneCore::ConfigItem.new(
+            key: :tag_version_match,
+            description: "To parse version number from tag name",
+            default_value: '\d+\.\d+\.\d+'
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :match,
+            description: "Match parameter of git describe. See man page of git describe for more info",
+            verify_block: proc do |value|
+              UI.user_error!("No match for analyze_commits action given, pass using `match: 'expr'`") unless value && !value.empty?
+            end
+          ),
           FastlaneCore::ConfigItem.new(
             key: :format,
             description: "You can use either markdown, slack or plain",
@@ -240,7 +197,7 @@ module Fastlane
           FastlaneCore::ConfigItem.new(
             key: :order,
             description: "You can change the order of groups in release notes",
-            default_value: ["feat", "fix", "refactor", "perf", "chore", "test", "docs", "no_type"],
+            default_value: ["feat", "fix"],
             type: Array,
             optional: true
           ),
@@ -250,12 +207,6 @@ module Fastlane
             default_value: {
               feat: "Features",
               fix: "Bug fixes",
-              refactor: "Code refactoring",
-              perf: "Performance improvements",
-              chore: "Building system",
-              test: "Testing",
-              docs: "Documentation",
-              no_type: "Other work"
             },
             type: Hash,
             optional: true

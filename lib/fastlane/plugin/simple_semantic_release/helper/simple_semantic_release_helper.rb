@@ -13,10 +13,67 @@ module Fastlane
         tag_comparison = "'#{params[:tags][0]}'...'#{params[:tags][1]}'" unless params[:tags].length == 0
         UI.message "Comparing all commits between tags #{params[:tags][0]} and #{params[:tags][1]}" unless params[:tags].length == 0
 
-        command = "git log --pretty='#{params[:format]}' #{tag_comparison}"
+        command = "git log --pretty='%s|%b|%H|%h|%at|>' #{tag_comparison}"
         commits = Actions.sh(command, log: params[:debug])
 
-        commits.strip.split('|>')
+        commits.strip.split('|>').map do |commit_line|
+          Helper::SimpleSemanticReleaseHelper.parse_commit(commit_line)
+        end
+      end
+
+      def self.get_current_version_number(params)
+        tags = params[:tags]
+        version_number = '0.0.0'
+
+        if tags.length > 0
+          # first tag in tags array is the latest one
+          parsed_version = tags[0].match(params[:tag_version_match])
+
+          if parsed_version.nil?
+            UI.user_error!("Error while parsing version from tag #{tags[0]} by using tag_version_match - #{params[:tag_version_match]}. Please check if the tag contains version as you expect and if you are using single brackets for tag_version_match parameter.")
+          end
+
+          version_number = parsed_version[0]
+        end
+
+        version_number
+      end
+
+      def self.get_next_version_number(params)
+        next_major = (params[:version_number].split('.')[0] || 0).to_i
+        next_minor = (params[:version_number].split('.')[1] || 0).to_i
+        next_patch = (params[:version_number].split('.')[2] || 0).to_i
+
+        major_changes = 0
+        minor_changes = 0
+        patch_changes = 0
+
+        params[:commits].each do |commit|
+          unless commit[:scope].nil?
+            next if params[:ignore_scopes].include?(commit[:scope])
+          end
+
+          if commit[:release] == "major"
+            major_changes += 1
+          elsif commit[:release] == "minor"
+            minor_changes += 1
+          elsif commit[:release] == "patch"
+            patch_changes += 1
+          end
+        end
+
+        if major_changes > 0
+          next_major += 1
+          next_minor = 0
+          next_patch = 0
+        elsif minor_changes > 0
+          next_minor += 1
+          next_patch = 0
+        elsif patch_changes > 0
+          next_patch += 1
+        end
+
+        "#{next_major}.#{next_minor}.#{next_patch}"
       end
 
       def self.get_tags(params)
@@ -56,18 +113,21 @@ module Fastlane
         tags
       end
 
-      def self.parse_commit(params)
+      def self.parse_commit(commit_line)
         # conventional commits are in format
         # type: subject (fix: app crash - for example)
-        commit_line = params[:commit_line]
-
-        parts = commit_line.split("|")
-        commit_subject = parts[0].strip
-        commit_body = parts[1]
-
-        releases = { fix: "patch", feat: "minor" }
-        pattern = params[:pattern]
+        pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
         breaking_change_pattern = /BREAKING CHANGES?: (.*)/
+        releases = { fix: "patch", feat: "minor" }
+
+        parts = commit_line.strip.split("|")
+
+        commit_subject  = parts[0].strip
+        commit_body     = parts[1]
+        hash            = parts[2]
+        short_hash      = parts[3]
+        commit_date     = parts[4]
+
         breaking_change = false
 
         matched = commit_subject.match(pattern)
@@ -85,15 +145,13 @@ module Fastlane
           exclamation_mark =  matched[3] == '!'
           subject =           matched[4]
 
-          # UI.message "Type: #{type}"
-          # UI.message "Scope: #{scope}"
-          # UI.message "Exclamation mark: #{exclamation_mark}"
-          # UI.message "Subject: #{subject}"
-
-          result[:is_valid] = true
-          result[:type] = type
-          result[:scope] = scope
-          result[:subject] = subject
+          result[:is_valid]     = true
+          result[:type]         = type
+          result[:scope]        = scope
+          result[:subject]      = subject
+          result[:hash]         = hash
+          result[:short_hash]   = short_hash
+          result[:commit_date]  = commit_date
 
           unless commit_body.nil?
             breaking_change_matched = commit_body.match(breaking_change_pattern)
