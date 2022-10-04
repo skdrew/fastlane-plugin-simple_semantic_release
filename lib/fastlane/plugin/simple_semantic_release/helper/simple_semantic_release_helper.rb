@@ -7,10 +7,42 @@ module Fastlane
     class SimpleSemanticReleaseHelper
       # class methods that you define here become available in your action
       # as `Helper::SimpleSemanticReleaseHelper.your_method`
-      #
-      def self.git_log(params)
-        command = "git log --pretty='#{params[:pretty]}' --reverse #{params[:start]}..HEAD"
-        Actions.sh(command, log: params[:debug]).chomp
+
+      def self.get_tags(params)
+        tags = []
+
+        command = "git tag --sort=-taggerdate --list '#{params[:match]}' | head -#{params[:limit]}"
+        result = Actions.sh(command, log: params[:debug])
+
+        result.each_line { |line| tags << line.strip unless line == '\n'}
+
+        tags
+      end
+
+      def self.get_latest_tags(params)
+        tags = get_tags({
+          limit: 1,
+          match: params[:match],
+          debug: params[:debug]
+        })
+
+        tags.push('HEAD')
+      end
+
+      def self.get_current_version_tags(params)
+        tags = get_tags({
+          limit: 2,
+          match: params[:match],
+          debug: params[:debug]
+        })
+
+        # only one tag matches, match that tag against HEAD
+        if tags.length == 1
+          UI.message "Only one previous tag matches, will compare against HEAD"
+          tags.push('HEAD')
+        end
+
+        tags
       end
 
       def self.parse_commit(params)

@@ -11,34 +11,6 @@ module Fastlane
     end
 
     class AnalyzeCommitsAction < Action
-      def self.get_tags(limit)
-        tags = []
-
-        command = "git tag --sort=-taggerdate --list '#{@params[:match]}' | head -#{limit}"
-        result = Actions.sh(command, log: @params[:debug])
-
-        result.each_line { |line| tags << line.strip unless line == '\n'}
-
-        tags
-      end
-
-      def self.get_latest_tags
-        tags = get_tags(1)
-        tags.push('HEAD')
-      end
-
-      def self.get_current_version_tags
-        tags = get_tags(2)
-
-        # only one tag matches, match that tag against HEAD
-        if tags.length == 1
-          UI.message "Only one previous tag matches, will compare against HEAD"
-          tags.push('HEAD')
-        end
-
-        tags
-      end
-
       def self.get_version_commits(tags)
         releases = { fix: "patch", feat: "minor" }
         format_pattern = /^(build|docs|fix|feat|chore|style|refactor|perf|test)(?:\((.*)\))?(!?)\: (.*)/
@@ -116,7 +88,10 @@ module Fastlane
       def self.run(params)
         @params = params
 
-        version_tags = get_current_version_tags
+        version_tags = Helper::SimpleSemanticReleaseHelper.get_current_version_tags({
+          match: params[:match],
+          debug: params[:debug]
+        })
         parsed_commits = get_version_commits(version_tags)
 
         current_version_number = get_current_version_number(version_tags)
