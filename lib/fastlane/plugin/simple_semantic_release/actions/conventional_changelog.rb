@@ -20,9 +20,11 @@ module Fastlane
           debug: params[:debug]
         )
 
+        version_number = params[:version] == 'unreleased' ? result[:next_version] : result[:current_version]
+
         note_builder(
           commits: result[:commits],
-          version: result[:current_version],
+          version: version_number,
           commit_url: params[:commit_url],
           display_links: params[:display_links],
           display_title: params[:display_title],
