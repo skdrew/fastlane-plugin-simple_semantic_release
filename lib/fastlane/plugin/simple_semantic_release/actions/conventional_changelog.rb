@@ -3,56 +3,46 @@ require_relative '../helper/simple_semantic_release_helper'
 
 module Fastlane
   module Actions
-    module SharedValues
-    end
-
     class ConventionalChangelogAction < Action
-      def self.get_commits_from_hash(params)
-        commits = Helper::SimpleSemanticReleaseHelper.git_log(
-          pretty: '%s|%b|%H|%h|%an|%at|>',
-          start: params[:hash],
-          debug: params[:debug]
-        )
-        commits.split("|>")
-      end
-
       def self.run(params)
-        # Get next version number from shared values
-        analyzed = lane_context[SharedValues::RELEASE_ANALYZED]
+        version = 'get_latest_tag'
+        version = 'get_current_version_tags' if params[:version] == 'released'
 
-        # If analyze commits action was not run there will be no version in shared
-        # values. We need to run the action to get next version number
-        unless analyzed
-          UI.user_error!("Release hasn't been analyzed yet. Run analyze_commits action first please.")
-          # version = other_action.analyze_commits(match: params[:match])
-        end
-
-        last_tag_hash = lane_context[SharedValues::RELEASE_LAST_TAG_HASH]
-        version = lane_context[SharedValues::RELEASE_NEXT_VERSION]
-
-        # Get commits log between last version and head
-        commits = get_commits_from_hash(
-          hash: last_tag_hash,
+        tags = Helper::SimpleSemanticReleaseHelper.send(version,
+          match: params[:match],
           debug: params[:debug]
         )
-        parsed = parse_commits(commits, params)
 
-        commit_url = params[:commit_url]
-        format = params[:format]
+        result = Helper::SimpleSemanticReleaseHelper.scan_current_release(
+          tags: tags,
+          tag_version_match: params[:tag_version_match],
+          ignore_scopes: params[:ignore_scopes],
+          debug: params[:debug]
+        )
 
-        result = note_builder(format, parsed, version, commit_url, params)
+        version_number = params[:version] == 'unreleased' ? result[:next_version] : result[:current_version]
 
-        result
+        note_builder(
+          commits: result[:commits],
+          version: version_number,
+          commit_url: params[:commit_url],
+          display_links: params[:display_links],
+          display_title: params[:display_title],
+          format: params[:format],
+          order: params[:order],
+          sections: params[:sections],
+          title: params[:title]
+        )
       end
 
-      def self.note_builder(format, commits, version, commit_url, params)
+      def self.note_builder(params)
         sections = params[:sections]
 
         result = ""
 
         # Begining of release notes
         if params[:display_title] == true
-          title = style_text(version, format, "title").to_s
+          title = style_text(params[:version], params[:format], "title").to_s
           title += " - #{params[:title]}" if params[:title]
           title += " - (#{Date.today})"
 
@@ -61,30 +51,26 @@ module Fastlane
 
         params[:order].each do |type|
           # write section only if there is at least one commit
-          next if commits.none? { |commit| commit[:type] == type }
+          next if params[:commits].none? { |commit| commit[:type] == type }
 
-          result += style_text(sections[type.to_sym], format, "heading").to_s
+          result += style_text(sections[type.to_sym], params[:format], "heading").to_s
           result += "\n\n"
 
-          commits.each do |commit|
+          params[:commits].each do |commit|
             next if commit[:type] != type || commit[:is_merge]
 
             result += "-"
 
             unless commit[:scope].nil?
-              formatted_text = style_text("#{commit[:scope]}:", format, "bold").to_s
+              formatted_text = style_text("#{commit[:scope]}", params[:format], "bold").to_s
               result += " #{formatted_text}"
             end
 
             result += " #{commit[:subject]}"
 
             if params[:display_links] == true
-              styled_link = build_commit_link(commit, commit_url, format).to_s
+              styled_link = build_commit_link(commit, params[:commit_url], params[:format]).to_s
               result += " (#{styled_link})"
-            end
-
-            if params[:display_author]
-              result += " - #{commit[:author_name]}"
             end
 
             result += "\n"
@@ -92,21 +78,17 @@ module Fastlane
           result += "\n"
         end
 
-        if commits.any? { |commit| commit[:is_breaking_change] == true }
-          result += style_text("BREAKING CHANGES", format, "heading").to_s
+        if params[:commits].any? { |commit| commit[:breaking_change] == true }
+          result += style_text("BREAKING CHANGES", params[:format], "heading").to_s
           result += "\n\n"
 
-          commits.each do |commit|
-            next unless commit[:is_breaking_change]
+          params[:commits].each do |commit|
+            next unless commit[:breaking_change]
             result += "- #{commit[:breaking_change]}" # This is the only unique part of this loop
 
             if params[:display_links] == true
-              styled_link = build_commit_link(commit, commit_url, format).to_s
+              styled_link = build_commit_link(commit, params[:commit_url], params[:format]).to_s
               result += " (#{styled_link})"
-            end
-
-            if params[:display_author]
-              result += " - #{commit[:author_name]}"
             end
 
             result += "\n"
@@ -116,9 +98,7 @@ module Fastlane
         end
 
         # Trim any trailing newlines
-        result = result.rstrip!
-
-        result
+        result.rstrip!
       end
 
       def self.style_text(text, format, style)
@@ -171,38 +151,6 @@ module Fastlane
         end
       end
 
-      def self.parse_commits(commits, params)
-        parsed = []
-        # %s|%b|%H|%h|%an|%at
-        format_pattern = lane_context[SharedValues::CONVENTIONAL_CHANGELOG_ACTION_FORMAT_PATTERN]
-        commits.each do |line|
-          splitted = line.split("|")
-
-          commit = Helper::SimpleSemanticReleaseHelper.parse_commit(
-            commit_subject: splitted[0],
-            commit_body: splitted[1],
-            pattern: format_pattern
-          )
-
-          unless commit[:scope].nil?
-            # if this commit has a scope, then we need to inspect to see if that is one of the scopes we're trying to exclude
-            scope = commit[:scope]
-            scopes_to_ignore = params[:ignore_scopes]
-            # if it is, we'll skip this commit when bumping versions
-            next if scopes_to_ignore.include?(scope) #=> true
-          end
-
-          commit[:hash] = splitted[2]
-          commit[:short_hash] = splitted[3]
-          commit[:author_name] = splitted[4]
-          commit[:commit_date] = splitted[5]
-
-          parsed.push(commit)
-        end
-
-        parsed
-      end
-
       #####################################################
       # @!group Documentation
       #####################################################
@@ -220,6 +168,27 @@ module Fastlane
 
         # Below a few examples
         [
+          FastlaneCore::ConfigItem.new(
+            key: :version,
+            description: "Select commits that have been released or not",
+            default_value: 'unreleased',
+            optional: true,
+            verify_block: proc do |value|
+              UI.user_error!("Version can only be 'unreleased' or 'released', you provided '#{value}'") unless ['released', 'unreleased'].include?(value)
+            end
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :tag_version_match,
+            description: "To parse version number from tag name",
+            default_value: '\d+\.\d+\.\d+'
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :match,
+            description: "Match parameter of git describe. See man page of git describe for more info",
+            verify_block: proc do |value|
+              UI.user_error!("No match for analyze_commits action given, pass using `match: 'expr'`") unless value && !value.empty?
+            end
+          ),
           FastlaneCore::ConfigItem.new(
             key: :format,
             description: "You can use either markdown, slack or plain",
@@ -239,7 +208,7 @@ module Fastlane
           FastlaneCore::ConfigItem.new(
             key: :order,
             description: "You can change the order of groups in release notes",
-            default_value: ["feat", "fix", "refactor", "perf", "chore", "test", "docs", "no_type"],
+            default_value: ["feat", "fix"],
             type: Array,
             optional: true
           ),
@@ -249,12 +218,6 @@ module Fastlane
             default_value: {
               feat: "Features",
               fix: "Bug fixes",
-              refactor: "Code refactoring",
-              perf: "Performance improvements",
-              chore: "Building system",
-              test: "Testing",
-              docs: "Documentation",
-              no_type: "Other work"
             },
             type: Hash,
             optional: true

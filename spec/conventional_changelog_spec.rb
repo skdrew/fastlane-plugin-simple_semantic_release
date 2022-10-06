@@ -2,18 +2,18 @@ require 'spec_helper'
 
 describe Fastlane::Actions::ConventionalChangelogAction do
   describe "Conventional Changelog" do
-    before do
-      Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::CONVENTIONAL_CHANGELOG_ACTION_FORMAT_PATTERN] = Fastlane::Helper::SimpleSemanticReleaseHelper.format_patterns["default"]
-      Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::RELEASE_NEXT_VERSION] = '1.0.2'
-      Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::RELEASE_ANALYZED] = true
-    end
+    # before do
+    #   Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::RELEASE_NEXT_VERSION] = '1.0.2'
+    # end
 
     def execute_lane_test(params = {})
       Fastlane::FastFile.new.parse("lane :test do conventional_changelog( #{params} ) end").runner.execute(:test)
     end
 
     def execute_lane_test_plain
-      execute_lane_test(format: 'plain')
+      execute_lane_test(
+        format: 'plain'
+      )
     end
 
     def execute_lane_test_slack
