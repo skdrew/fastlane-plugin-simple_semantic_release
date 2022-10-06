@@ -3,7 +3,7 @@ require_relative '../helper/simple_semantic_release_helper'
 
 module Fastlane
   module Actions
-    class GenerateChangelogAction < Action
+    class ConventionalChangelogAction < Action
       def self.run(params)
         version = 'get_latest_tag'
         version = 'get_current_version_tags' if params[:version] == 'released'

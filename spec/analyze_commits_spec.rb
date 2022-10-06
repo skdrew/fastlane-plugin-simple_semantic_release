@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Fastlane::Actions::AnalyzeVersionAction do
+describe Fastlane::Actions::AnalyzeCommitsAction do
   describe "Analyze Commits" do
     before do
     end
@@ -13,7 +13,7 @@ describe Fastlane::Actions::AnalyzeVersionAction do
     end
 
     def execute_lane_test(params)
-      Fastlane::FastFile.new.parse("lane :test do analyze_version( #{params} ) end").runner.execute(:test)
+      Fastlane::FastFile.new.parse("lane :test do analyze_commits( #{params} ) end").runner.execute(:test)
     end
 
     it "should increment fix and return true" do

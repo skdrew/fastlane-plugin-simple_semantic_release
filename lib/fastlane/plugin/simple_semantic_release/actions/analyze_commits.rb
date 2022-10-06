@@ -3,7 +3,7 @@ require_relative '../helper/simple_semantic_release_helper'
 
 module Fastlane
   module Actions
-    class AnalyzeVersionAction < Action
+    class AnalyzeCommitsAction < Action
       def self.run(params)
         tags = Helper::SimpleSemanticReleaseHelper.get_latest_tag(
           match: params[:match],
@@ -94,11 +94,7 @@ module Fastlane
       end
 
       def self.output
-        [
-          ['RELEASE_IS_NEXT_VERSION_HIGHER', 'True if next version is higher then last version'],
-          ['RELEASE_NEXT_VERSION', 'Next version string in format (major.minor.patch)'],
-          ['RELEASE_LAST_VERSION', 'Last version number - parsed from last tag.'],
-        ]
+        []
       end
 
       def self.return_value
